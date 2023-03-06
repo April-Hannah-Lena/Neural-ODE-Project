@@ -2,9 +2,9 @@ using StaticArrays, Random, ProgressMeter
 using OrdinaryDiffEq, SciMLSensitivity, Flux, CUDA
 using ChaoticNDETools, NODEData
 using GAIO
-using GLMakie: plot, plot!, Figure, Axis3, Colorbar
 
 Random.seed!(1234)
+include("./scripts/plotting.jl")
 
 # Chua's circuit
 function v(u, p, t)
@@ -17,7 +17,7 @@ p_ode = SA{Float32}[ 18.0, 33.0, -0.2, 0.01 ]
 v(u) = v(u, p_ode, 0)
 
 tspan = (0f0, 50f0)
-dt = 0.01f0
+dt = 0.1f0
 
 a, b, m0, m1 = p_ode
 eq = SA{Float32}[ sqrt(-3*m0/m1), 0, -sqrt(-3*m0/m1) ]   # equilibrium
@@ -45,13 +45,6 @@ model = ChaoticNDE(neural_ode_prob, alg=Tsit5(), sensealg=InterpolatingAdjoint()
 
 loss(x, y) = sum(abs2, x - y)
 
-function plot_NDE()
-    plt = plot(sol.t, Array(model((sol.t,train[1][2])))', label="Neural ODE")
-    plot!(plt, sol.t, Array(sol)', label="Training Data")
-    plot!(plt, [train[1][1][1],train[end][1][end]],zeros(2),label="Length of Training Set", linewidth=5, ylims=[0,5])
-    display(plt)
-end
-
 η = 1e-3
 opt = Flux.AdamW(η)
 opt_state = Flux.setup(opt, model)
@@ -66,7 +59,7 @@ if TRAIN
             loss(result, x)
         end 
 
-        #plot_NDE()
+        #plot_nde(sol, model, train)
 
         if i_e % 30 == 0
             η /= 2
@@ -97,18 +90,8 @@ S = cover(P, [eq, -eq])
 W = unstable_set(F, S)
 W_trained = unstable_set(F_trained, S)
 
-fig = Figure();
-ax = Axis3(fig[1,1], aspect=(1,1.2,1))
-plot!(ax, W, color=(:blue, 0.4), label="True unstable manifold")
-ax2 = Axis3(fig[1,2], aspect=(1,1.2,1))
-plot!(ax2, W_trained, color=(:red, 0.4), label="Predicted unstable manifold")
-display(fig)
-
-fig = Figure();
-ax = Axis3(fig[1,1], aspect=(1,1.2,1))
-plot!(ax, setdiff(W, W_trained), color=(:blue, 0.8))
-plot!(ax, setdiff(W_trained, W), color=(:red, 0.8))
-display(fig)
+plot_unstable_sets(W, W_trained)
+plot_symdiff(W, W_trained)
 
 T = TransferOperator(F, W, W)
 # we give Arpack some help converging to the eigenvalues,
@@ -121,10 +104,6 @@ tol, maxiter, v0 = eps()^(1/4), 1000, ones(Float32, size(T, 2))
 μ_rescale .= sign(μ_rescale) .* (log ∘ abs).(μ_rescale)
 μ = BoxFun(μ, μ_rescale)
 
-fig = Figure();
-ax = Axis3(fig[1,1], aspect=(1,1.2,1))
-ms = plot!(ax, μ, colormap=(:jet, 0.4), label="True almost invariant sets")
-
 T_trained = TransferOperator(F_trained, W, W)
 λ_trained, ev_trained = eigs(T_trained; nev=5, which=:LR, maxiter=maxiter, tol=tol, v0=v0)
 
@@ -133,8 +112,5 @@ T_trained = TransferOperator(F_trained, W, W)
 μ_rescale .= sign(μ_rescale) .* (log ∘ abs).(μ_rescale)
 μ_trained = BoxFun(μ_trained, μ_rescale)
 
-ax2 = Axis3(fig[1,2], aspect=(1,1.2,1))
-plot!(ax2, μ_trained, colormap=(:jet, 0.4), label="Predicted almost invariant sets")
-Colorbar(fig[1, 3], ms)
-display(fig)
+plot_measures(μ, μ_trained)
 
