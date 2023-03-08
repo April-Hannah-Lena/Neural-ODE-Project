@@ -4,6 +4,7 @@ authors = ["April Herwig <aprillherwig@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChaoticNDETools = "c9c3e87f-99dd-4ea8-9de5-c6a08e86872f"
 ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"

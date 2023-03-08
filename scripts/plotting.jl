@@ -21,16 +21,19 @@ function callback(p, l, pred; doplot = true)
 end
 
 function plot_nde(sol, model, train)
-    pred = Array(model((sol.t,train[1][2])))
-    tr = Array(sol)
-    fig, ax, ms = lines(sol.t, pred[1, :], label="Neural ODE dim 1")
-    lines!(ax, sol.t, pred[2, :], label="Neural ODE dim 2")
-    lines!(ax, sol.t, pred[3, :], label="Neural ODE dim 3")
-    lines!(ax, sol.t, tr[1, :], label="Training Data dim 1")
-    lines!(ax, sol.t, tr[2, :], label="Training Data dim 2")
-    lines!(ax, sol.t, tr[3, :], label="Training Data dim 3")
-    Legend(fig[1,2], ax)
-    fig
+    try
+        pred = Array(model((sol.t,train[1][2])))
+        tr = Array(sol)
+        fig, ax, ms = lines(sol.t, pred[1, :], label="Neural ODE dim 1")
+        lines!(ax, sol.t, pred[2, :], label="Neural ODE dim 2")
+        lines!(ax, sol.t, pred[3, :], label="Neural ODE dim 3")
+        lines!(ax, sol.t, tr[1, :], label="Training Data dim 1")
+        lines!(ax, sol.t, tr[2, :], label="Training Data dim 2")
+        lines!(ax, sol.t, tr[3, :], label="Training Data dim 3")
+        Legend(fig[1,2], ax)
+        fig
+    catch ex
+    end
 end
 
 function plot_unstable_sets(W, W_trained)
