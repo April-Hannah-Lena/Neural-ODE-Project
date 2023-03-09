@@ -40,11 +40,6 @@ neural_net = Chain(
     Dense(6 => N_weights, swish),
     #Dense(N_weights => N_weights, swish), 
     #Dense(N_weights => N_weights, swish), 
-    #Dense(N_weights => N_weights, swish),
-    SkipConnection(Dense(N_weights => N_weights, swish), +),
-    SkipConnection(Dense(N_weights => N_weights, swish), +),
-    SkipConnection(Dense(N_weights => N_weights, swish), +),
-    SkipConnection(Dense(N_weights => N_weights, swish), +),
     SkipConnection(Dense(N_weights => N_weights, swish), +),
     SkipConnection(Dense(N_weights => N_weights, swish), +),
     Dense(N_weights => 3, swish)
@@ -108,7 +103,7 @@ if TRAIN
 end
 
 p_trained = Array(model.p)
-BSON.@save "params_$(now())" p_trained
+BSON.@save "params_$( round(now(), Minute(1)) )" p_trained
 
 v_trained = re_nn(CuArray(p_trained))
 
@@ -120,44 +115,4 @@ end
 
 # -------------------------------------
 
-center, radius = (0,0,0), (20,20,120)
-Q = Box{Float32}(center, radius)
-P = BoxPartition(Q)#, (128,128,128))
-
-f_trained(x) = rk4_flow_map(v_trained, x, 0.1f0, 1)
-f_true(x) = rk4_flow_map(v_true, x, 0.1f0, 1)
-
-no_of_points = 800
-F = BoxMap(:montecarlo, f_true, Q, no_of_points=no_of_points)
-F_trained = BoxMap(:montecarlo, f_trained, Q, no_of_points=no_of_points)
-
-# computing the attractor by covering the 2d unstable manifold of two equilibria
-S = cover(P, [eq, -eq])
-
-W = unstable_set(F, S)
-W_trained = unstable_set(F_trained, S)
-
-plot_unstable_sets(W, W_trained)
-plot_symdiff(W, W_trained)
-
-T = TransferOperator(F, W, W)
-# we give Arpack some help converging to the eigenvalues,
-# see the Arpack docs for explanations of keywords
-tol, maxiter, v0 = eps()^(1/4), 1000, ones(Float32, size(T, 2))
-λ, ev = eigs(T; nev=5, which=:LR, maxiter=maxiter, tol=tol, v0=v0)
-
-μ = real ∘ ev[2]
-μ_rescale = collect(values(μ))
-μ_rescale .= sign(μ_rescale) .* (log ∘ abs).(μ_rescale)
-μ = BoxFun(μ, μ_rescale)
-
-T_trained = TransferOperator(F_trained, W, W)
-λ_trained, ev_trained = eigs(T_trained; nev=5, which=:LR, maxiter=maxiter, tol=tol, v0=v0)
-
-μ_trained = real ∘ ev[2]
-μ_rescale = collect(values(μ_trained))
-μ_rescale .= sign(μ_rescale) .* (log ∘ abs).(μ_rescale)
-μ_trained = BoxFun(μ_trained, μ_rescale)
-
-plot_measures(μ, μ_trained)
 
