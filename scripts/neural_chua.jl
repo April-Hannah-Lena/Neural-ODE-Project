@@ -32,7 +32,7 @@ true_sol = solve(prob, Tsit5(), saveat=dt, sensealg=InterpolatingAdjoint())
 
 plot_trajectory(true_sol)
 
-train, valid = NODEDataloader(true_sol, 4; dt=dt, valid_set=0.8, GPU=false#=true=#)
+train, valid = NODEDataloader(true_sol, 8; dt=dt, valid_set=0.8, GPU=false#=true=#)
 
 N_weights = 10
 neural_net = Chain(
@@ -42,7 +42,7 @@ neural_net = Chain(
     Dense(3 => N_weights, swish),
     #Dense(N_weights => N_weights, swish), 
     #Dense(N_weights => N_weights, swish), 
-    #SkipConnection(Dense(N_weights => N_weights, swish), +),
+    SkipConnection(Dense(N_weights => N_weights, swish), +),
     SkipConnection(Dense(N_weights => N_weights, swish), +),
     Dense(N_weights => 3)
 ) #|> gpu
@@ -94,7 +94,7 @@ if TRAIN
         end 
 
         l = loss( model(train[1]), train[1][2] )
-        display(plot_nde(true_sol, model, train))
+        display(plot_nde(true_sol, model, train, ndata=100))
 
         if i_e % 30 == 0
             η /= 2

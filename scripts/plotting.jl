@@ -20,16 +20,17 @@ function callback(p, l, pred; doplot = true)
     return false
 end
 
-function plot_nde(sol, model, train)
+function plot_nde(sol, model, train; ndata=30)
     try
-        pred = Array(model((sol.t,train[1][2])))
+        t = sol.t[1:ndata]
+        pred = Array(model((t,train[1][2])))
         tr = Array(sol)
-        fig, ax, ms = lines(sol.t, pred[1, :], label="Neural ODE dim 1")
-        lines!(ax, sol.t, pred[2, :], label="Neural ODE dim 2")
-        lines!(ax, sol.t, pred[3, :], label="Neural ODE dim 3")
-        lines!(ax, sol.t, tr[1, :], label="Training Data dim 1")
-        lines!(ax, sol.t, tr[2, :], label="Training Data dim 2")
-        lines!(ax, sol.t, tr[3, :], label="Training Data dim 3")
+        fig, ax, ms = lines(t, pred[1, 1:ndata], label="Neural ODE dim 1")
+        lines!(ax, t, pred[2, 1:ndata], label="Neural ODE dim 2")
+        lines!(ax, t, pred[3, 1:ndata], label="Neural ODE dim 3")
+        lines!(ax, t, tr[1, 1:ndata], label="Training Data dim 1")
+        lines!(ax, t, tr[2, 1:ndata], label="Training Data dim 2")
+        lines!(ax, t, tr[3, 1:ndata], label="Training Data dim 3")
         Legend(fig[1,2], ax)
         fig
     catch ex
