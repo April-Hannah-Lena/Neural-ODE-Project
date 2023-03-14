@@ -12,7 +12,7 @@ F = BoxMap(:montecarlo, f, Q, no_of_points=800)
 
 S = cover(P, :)
 C = chain_recurrent_set(F, S, steps=21)
-σ = finite_time_lyapunov_exponents(F, C, T=0.25)
+σ = finite_time_lyapunov_exponents(F, C, T=0.5)
 
 using WGLMakie: plot!, Figure, Axis3, Colorbar
 

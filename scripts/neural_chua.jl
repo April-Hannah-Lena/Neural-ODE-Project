@@ -1,5 +1,6 @@
-using StaticArrays, Random, ProgressMeter, BSON, Dates
-using OrdinaryDiffEq, SciMLSensitivity, Flux, CUDA
+using StaticArrays, Random, ProgressMeter, BSON
+using Dates: now, format
+using OrdinaryDiffEq, SciMLSensitivity, Flux#, CUDA
 using ChaoticNDETools, NODEData
 using GAIO
 
@@ -34,7 +35,7 @@ plot_trajectory(true_sol)
 
 train, valid = NODEDataloader(true_sol, 8; dt=dt, valid_set=0.8, GPU=false#=true=#)
 
-N_weights = 10
+N_weights = 20
 neural_net = Chain(
     #BatchNorm(1),
     #u -> 2*u,
@@ -53,9 +54,12 @@ neural_ode(u, p, t) = re_nn(p)(u)
 neural_ode_prob = ODEProblem(neural_ode, #=CuArray(x0)=#x0, tspan, p)
 model = ChaoticNDE(neural_ode_prob, alg=Tsit5(), gpu=false#=true=#, sensealg=InterpolatingAdjoint())
 
-loss(x, y) = sum(abs2, x - y)
+loss(x, y) = sum(enumerate(zip(x, y))) do z
+    (i, (xi, yi)) = z
+    abs2(xi - yi) * 0.95^i     # give closer times higher weight
+end
 
-η = 1e-3
+η = 1f-3
 θ = 1f-4
 opt = Flux.OptimiserChain(Flux.WeightDecay(θ), Flux.RMSProp(η))
 opt_state = Flux.setup(opt, model) 
@@ -82,8 +86,10 @@ while isapprox(norm(grad[1].p), 0, atol=100) && iter < 4
 end
 =#
 
+l = loss( model(train[1]), train[1][2] )
+
 TRAIN = true
-epochs = 30
+epochs = 20
 prog = Progress(epochs)
 if TRAIN
     for i_e = 1:epochs
@@ -93,8 +99,8 @@ if TRAIN
             loss(result, x)
         end 
 
-        l = loss( model(train[1]), train[1][2] )
-        display(plot_nde(true_sol, model, train, ndata=100))
+        global l = loss( model(train[1]), train[1][2] )
+        display(plot_nde(true_sol, model, train, ndata=450))
 
         if i_e % 30 == 0
             η /= 2
@@ -107,9 +113,8 @@ if TRAIN
 end
 
 p_trained = Array(model.p)
-BSON.@save "params_$( round(now(), Minute(1)) )" p_trained
-
-v_trained = re_nn(#=CuArray(p_trained)=#p_trained)
+time = format(now(), "yyyy-mm-dd-HH-MM")
+BSON.@save "params_$(time)_loss_$(l).bson" p_trained
 
 # -------------------------------------
 
