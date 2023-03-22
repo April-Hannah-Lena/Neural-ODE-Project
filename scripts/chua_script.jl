@@ -45,7 +45,8 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
 
     l = loss( model(train[1]), train[1][2] )
 
-    prog = Progress(N_epochs)
+    tid = Threads.threadid()
+    prog = Progress(N_epochs, desc="Task $tid", offset=2*tid)
     if TRAIN
         for i_e = 1:N_epochs
 
