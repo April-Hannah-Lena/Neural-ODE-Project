@@ -1,4 +1,8 @@
-using StaticArrays, Random, ProgressMeter, BSON
+exit_code = false
+
+try # ---------------------------------------------------
+
+using StaticArrays, Random, ProgressMeter, BSON, ThreadsX
 using Dates: now, format
 using OrdinaryDiffEq, SciMLSensitivity, Flux#, CUDA
 using ChaoticNDETools, NODEData
@@ -56,7 +60,7 @@ params = [
 
 BSON.@save "./params/params_list.bson" params
 
-losses = Float32[
+losses = ThreadsX.collect(
 
     try
         train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAIN, PLOT)
@@ -74,8 +78,34 @@ losses = Float32[
         θ in θs,
         η in ηs
 
-]
+)
 
 BSON.@save "losses.bson" losses
 
-# ---------------------------------------------------
+catch ex # ---------------------------------------------------
+
+exit_code = true
+
+finally # ---------------------------------------------------
+
+include("uname+passwd.jl")
+
+opt = SendOptions(
+    isSSL = true,
+    username = username,
+    passwd = passwd
+)
+
+body = IOBuffer(
+    "Date: $(Dates.format(Dates.now(), "e, dd u yyyy HH:MM:SS")) +0100\r\n" *
+    "From: Me <$(username)>\r\n" *
+    "To: $(rcpt)\r\n" *
+    "Subject: Benchmark $(exit_code ? "un" : "")successfully finished\r\n" *
+    "\r\n" *
+    "Go turn off the computer.\r\n"
+)
+
+url = "smtps://smtp.gmail.com:465"
+resp = send(url, ["<$(rcpt)>"], "<$(username)>", body, opt)
+
+end
