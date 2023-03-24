@@ -45,7 +45,7 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
 
     l = loss( model(train[1]), train[1][2], β )
 
-    prog = Progress(N_epochs)
+    #prog = Progress(N_epochs)
     if TRAIN
         for i_e = 1:N_epochs
 
@@ -62,7 +62,7 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
                 Flux.adjust!(opt_state, η)
             end
 
-            ProgressMeter.next!(prog, showvalues=[(:loss, l)])
+            #ProgressMeter.next!(prog, showvalues=[(:loss, l)])
 
         end
     end

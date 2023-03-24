@@ -1,11 +1,11 @@
-using StaticArrays, Random, ProgressMeter, BSON, Base.Threads, SMTPClient
+using StaticArrays, Random, ProgressMeter, BSON, ThreadsX, SMTPClient
 using Dates: now, format
 using OrdinaryDiffEq, SciMLSensitivity, Flux#, CUDA
 using ChaoticNDETools, NODEData
 #using GAIO
 
 Random.seed!(1234)
-include("plotting.jl")
+#include("plotting.jl")
 
 # ---------------------------------------------------
 
@@ -37,11 +37,11 @@ include("chua_script.jl")
 TRAIN = true
 PLOT = false
 
-weights = [10, 15, 20]
-hidden_layers = [1, 2, 3]
-epochs = [180]
-tfins = Float32[5, 10, 15, 20]
-βs = Float32[0.95, 0.99, 1.]
+weights = [10]#, 15, 20]
+hidden_layers = [1]#, 2, 3]
+epochs = [20]#180]
+tfins = Float32[5]#, 10, 15, 20]
+βs = Float32[0.95]#, 0.99, 1.]
 θs = Float32[1f-3, 1f-4]
 ηs = Float32[1f-3]
 
@@ -56,24 +56,29 @@ params = [
         η in ηs
 ]
 
-BSON.@save "./params/params_list.bson" params
+time = format(now(), "yyyy-mm-dd")
+BSON.@save "./params/params_list_$(time).bson" params
 
 exit_code = false
+p = Progress(length(params))
 
-losses = [
+losses = [#ThreadsX.collect(
     try
-        train_node(param..., TRAIN, PLOT)
+        l = train_node(param..., TRAIN, PLOT)
     catch ex
         global exit_code = true
         ex isa InterruptException && rethrow()
         @show ex
-        NaN32
+        l = NaN32
+    finally
+        next!(p)
+        l
     end
 
     for param in params
-]
+]#)
 
-BSON.@save "./params/losses.bson" losses
+BSON.@save "./params/losses_$(time).bson" losses
 
 # ---------------------------------------------------
 
