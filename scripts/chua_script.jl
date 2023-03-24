@@ -25,7 +25,7 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
     neural_ode_prob = ODEProblem(neural_ode, #=CuArray(x0)=#x0, tspan, p)
     model = ChaoticNDE(neural_ode_prob, alg=Tsit5(), gpu=false#=true=#, sensealg=InterpolatingAdjoint())
 
-    loss(x, y, β=β) = sum(enumerate(zip(x, y))) do z
+    loss(x, y, β) = sum(enumerate(zip(x, y))) do z
         (i, (xi, yi)) = z
         abs2(xi - yi) * β^i     # give closer times higher weight
     end
@@ -40,10 +40,10 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
     model(train[1])
     grad = Flux.gradient(model) do m
         result = m(train[1])
-        loss(result, train[1][2])
+        loss(result, train[1][2], β)
     end   
 
-    l = loss( model(train[1]), train[1][2] )
+    l = loss( model(train[1]), train[1][2], β )
 
     prog = Progress(N_epochs)
     if TRAIN
@@ -51,7 +51,7 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
 
             Flux.train!(model, train, opt_state) do m, t, x
                 result = m((t,x))
-                loss(result, x)
+                loss(result, x, β)
             end 
 
             global l = loss( model(train[1]), train[1][2], 1f0 )

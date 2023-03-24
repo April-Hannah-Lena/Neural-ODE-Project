@@ -1,8 +1,4 @@
-exit_code = false
-
-try # ---------------------------------------------------
-
-using StaticArrays, Random, ProgressMeter, BSON, ThreadsX
+using StaticArrays, Random, ProgressMeter, BSON, Base.Threads, SMTPClient
 using Dates: now, format
 using OrdinaryDiffEq, SciMLSensitivity, Flux#, CUDA
 using ChaoticNDETools, NODEData
@@ -10,6 +6,8 @@ using ChaoticNDETools, NODEData
 
 Random.seed!(1234)
 include("plotting.jl")
+
+# ---------------------------------------------------
 
 # Chua's circuit
 function v(u, p, t)
@@ -39,11 +37,11 @@ include("chua_script.jl")
 TRAIN = true
 PLOT = false
 
-weights = [5, 10, 15, 20]
+weights = [10, 15, 20]
 hidden_layers = [1, 2, 3]
 epochs = [180]
-tfins = Float32[5, 8, 10, 12, 15, 18, 20]
-βs = Float32[0.9, 0.95, 0.98, 0.99, 1.]
+tfins = Float32[5, 10, 15, 20]
+βs = Float32[0.95, 0.99, 1.]
 θs = Float32[1f-3, 1f-4]
 ηs = Float32[1f-3]
 
@@ -60,33 +58,24 @@ params = [
 
 BSON.@save "./params/params_list.bson" params
 
-losses = ThreadsX.collect(
+exit_code = false
 
+losses = [
     try
-        train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAIN, PLOT)
+        train_node(param..., TRAIN, PLOT)
     catch ex
+        global exit_code = true
         ex isa InterruptException && rethrow()
         @show ex
         NaN32
     end
 
-    for N_weights in weights,
-        N_hidden_layers in hidden_layers,
-        N_epochs in epochs,
-        tfin in tfins,
-        β in βs,
-        θ in θs,
-        η in ηs
+    for param in params
+]
 
-)
+BSON.@save "./params/losses.bson" losses
 
-BSON.@save "losses.bson" losses
-
-catch ex # ---------------------------------------------------
-
-exit_code = true
-
-finally # ---------------------------------------------------
+# ---------------------------------------------------
 
 include("uname+passwd.jl")
 
@@ -107,5 +96,3 @@ body = IOBuffer(
 
 url = "smtps://smtp.gmail.com:465"
 resp = send(url, ["<$(rcpt)>"], "<$(username)>", body, opt)
-
-end
