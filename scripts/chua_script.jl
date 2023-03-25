@@ -3,7 +3,7 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
     prob = ODEProblem(v, x0, (t0, tfin), p_ode)
     true_sol = solve(prob, Tsit5(), saveat=dt, sensealg=InterpolatingAdjoint())
 
-    PLOT && plot_trajectory(true_sol)
+    PLOT && display(plot_trajectory(true_sol))
 
     train, valid = NODEDataloader(true_sol, 8; dt=dt, valid_set=0.8, GPU=false#=true=#)
 

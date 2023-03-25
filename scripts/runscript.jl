@@ -5,7 +5,7 @@ using ChaoticNDETools, NODEData
 #using GAIO
 
 Random.seed!(1234)
-#include("plotting.jl")
+include("plotting.jl")
 
 # ---------------------------------------------------
 
@@ -37,12 +37,12 @@ include("chua_script.jl")
 TRAIN = true
 PLOT = false
 
-weights = [10]#, 15, 20]
-hidden_layers = [1]#, 2, 3]
-epochs = [20]#180]
-tfins = Float32[5]#, 10, 15, 20]
-βs = Float32[0.95]#, 0.99, 1.]
-θs = Float32[1f-3, 1f-4]
+weights = [15]#10, 15, 20]
+hidden_layers = [3]#1, 2, 3]
+epochs = [180]
+tfins = Float32[15]#5, 10, 15, 20]
+βs = Float32[0.99]#0.95, 0.99, 1.]
+θs = Float32[1f-4]#1f-3, 1f-4]
 ηs = Float32[1f-3]
 
 params = [
@@ -60,23 +60,18 @@ time = format(now(), "yyyy-mm-dd")
 BSON.@save "./params/params_list_$(time).bson" params
 
 exit_code = false
-p = Progress(length(params))
+#p = Progress(length(params))
 
-losses = [#ThreadsX.collect(
+losses = progress_map(params; mapfun=ThreadsX.map, progress=Progress(length(params))) do param
     try
-        l = train_node(param..., TRAIN, PLOT)
+        train_node(param..., TRAIN, PLOT)
     catch ex
-        global exit_code = true
         ex isa InterruptException && rethrow()
         @show ex
-        l = NaN32
-    finally
-        next!(p)
-        l
+        global exit_code = true
+        NaN32
     end
-
-    for param in params
-]#)
+end
 
 BSON.@save "./params/losses_$(time).bson" losses
 
@@ -91,7 +86,7 @@ opt = SendOptions(
 )
 
 body = IOBuffer(
-    "Date: $(Dates.format(Dates.now(), "e, dd u yyyy HH:MM:SS")) +0100\r\n" *
+    "Date: $(format(now(), "e, dd u yyyy HH:MM:SS")) +0100\r\n" *
     "From: Me <$(username)>\r\n" *
     "To: $(rcpt)\r\n" *
     "Subject: Benchmark $(exit_code ? "un" : "")successfully finished\r\n" *
