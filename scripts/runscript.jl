@@ -1,3 +1,5 @@
+cd("./scripts")
+
 using StaticArrays, Random, ProgressMeter, BSON, ThreadsX, SMTPClient
 using Dates: now, format
 using OrdinaryDiffEq, SciMLSensitivity, Flux#, CUDA
@@ -5,7 +7,7 @@ using ChaoticNDETools, NODEData
 #using GAIO
 
 Random.seed!(1234)
-include("plotting.jl")
+#include("plotting.jl")
 
 # ---------------------------------------------------
 
@@ -37,34 +39,23 @@ include("chua_script.jl")
 TRAIN = true
 PLOT = false
 
-weights = [15]#10, 15, 20]
-hidden_layers = [3]#1, 2, 3]
-epochs = [180]
-tfins = Float32[15]#5, 10, 15, 20]
-βs = Float32[0.99]#0.95, 0.99, 1.]
-θs = Float32[1f-4]#1f-3, 1f-4]
-ηs = Float32[1f-3]
+weights = 15#[10, 15, 20]
+hidden_layers = 3#[1, 2, 3]
+epochs = 180
+tfins = Float32[5, 8, 10, 12, 15, 18, 20]
+β = 0.99f0#Float32[0.95, 0.99, 1.]
+θ = 1f-4#Float32[1f-3, 1f-4]
+η = 1f-3#Float32[1f-3]
 
-params = [
-    (N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η)
-    for N_weights in weights,
-        N_hidden_layers in hidden_layers,
-        N_epochs in epochs,
-        tfin in tfins,
-        β in βs,
-        θ in θs,
-        η in ηs
-]
-
-time = format(now(), "yyyy-mm-dd")
-BSON.@save "./params/params_list_$(time).bson" params
+@show time = format(now(), "yyyy-mm-dd-HH-MM")
+#BSON.@save "./params/params_list_$(time).bson" params
 
 exit_code = false
 #p = Progress(length(params))
 
-losses = progress_map(params; mapfun=ThreadsX.map, progress=Progress(length(params))) do param
+losses = progress_map(tfins; mapfun=ThreadsX.map, progress=Progress(length(tfins))) do tfin
     try
-        train_node(param..., TRAIN, PLOT)
+        train_node(weights, hidden_layers, epochs, tfin, β, θ, η, TRAIN, PLOT)
     catch ex
         ex isa InterruptException && rethrow()
         @show ex

@@ -55,9 +55,9 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
             end 
 
             global l = loss( model(train[1]), train[1][2], 1f0 )
-            PLOT && display(plot_nde(true_sol, model, train, ndata=450))
-
+            
             if i_e % 30 == 0
+                PLOT && display(plot_nde(true_sol, model, train, ndata=450))
                 η /= 2
                 Flux.adjust!(opt_state, η)
             end
