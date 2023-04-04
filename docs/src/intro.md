@@ -30,7 +30,7 @@ The Chua oscillator exhibits a strange attractor referred to as the double scrol
 
 
 ```@example 1
-using WGLMakie
+using GLMakie
 ```
 
 ```@example 1

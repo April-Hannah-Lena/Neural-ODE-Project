@@ -52,7 +52,7 @@ During development of the project, both methods were tested and the implicit for
 
 
 ```@example 1
-using WGLMakie
+using GLMakie
 ```
 
 

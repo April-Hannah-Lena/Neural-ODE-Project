@@ -1,7 +1,7 @@
 using NeuralODEProject
 using Documenter
 
-using WGLMakie
+using GLMakie
 using StaticArrays, Statistics, BSON, Random
 using DifferentialEquations, OrdinaryDiffEq
 using GAIO
