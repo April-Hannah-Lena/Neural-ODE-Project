@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Discussion · Neural ODE Project</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">Neural ODE Project</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../intro/">Introduction</a></li><li><a class="tocitem" href="../model/">Model</a></li><li class="is-active"><a class="tocitem" href>Discussion</a><ul class="internal"><li><a class="tocitem" href="#Hyperparameter-Optimization"><span>Hyperparameter Optimization</span></a></li><li><a class="tocitem" href="#Amount-of-Data-Required"><span>Amount of Data Required</span></a></li><li><a class="tocitem" href="#Perturbed-Data"><span>Perturbed Data</span></a></li><li><a class="tocitem" href="#Conclusion"><span>Conclusion</span></a></li></ul></li><li><a class="tocitem" href="../refs/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Discussion</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Discussion</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="github.com/April-Hannah-Lena/NeuralODEProject.jl/blob/main/docs/src/discussion.md#" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Discussion"><a class="docs-heading-anchor" href="#Discussion">Discussion</a><a id="Discussion-1"></a><a class="docs-heading-anchor-permalink" href="#Discussion" title="Permalink"></a></h1><h2 id="Hyperparameter-Optimization"><a class="docs-heading-anchor" href="#Hyperparameter-Optimization">Hyperparameter Optimization</a><a id="Hyperparameter-Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Hyperparameter-Optimization" title="Permalink"></a></h2><p>The general model used, as described in the model section, is summarized as follows.</p><p>A residual neural network with <code>N_hidden_layers</code> and <code>N_weights</code> per layer was trained using <code>N_epochs</code> with the RMSProp [SOURCE] gradient-based optimization method with learning rate <code>η</code>. The loss function from the model section with added regularization hyperparameter <code>θ</code> and exponential weight factor <code>β</code> was used:</p><p class="math-container">\[L(\mathbf{x}, \mathbf{\hat{x}}; \mathbf{p}) = \left( \sum_{i=1}^n \beta^i \cdot \| \mathbf{x}(t_i) - \mathbf{\hat{x}}(t_i; \mathbf{p}) \| ^2 \right) + \frac{\theta}{2} \| \mathbf{p} \| ^2 . \]</p><p>The regularization factor was implemented using Flux.jl&#39;s built in <code>OptimiserChain</code> and  <code>WeightDecay</code> functions. </p><p>The hyperparameters were optimized over the following grid in the script file <code>runscript.jl</code>. </p><pre><code class="language-julia hljs">weights = [10, 12, 15, 18, 20]
+hidden_layers = [3]#[1, 2, 3]
+epochs = [120]
+tfins = Float32[15]#Float32[5, 8, 10, 12, 15, 18, 20]
+βs = Float32[0.95, 0.98, 0.99, 1.]
+θs = Float32[1f-2, 1f-3, 1f-4]
+ηs = Float32[1f-3]
+
+params = [
+    (w, l, e, t, β, θ, η) for
+    w in weights,
+    l in hidden_layers,
+    e in epochs,
+    t in tfins,
+    β in βs,
+    θ in θs,
+    η in ηs
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5×1×1×1×4×3×1 Array{Tuple{Int64, Int64, Int64, Float32, Float32, Float32, Float32}, 7}:
+[:, :, 1, 1, 1, 1, 1] =
+ (10, 3, 120, 15.0, 0.95, 0.01, 0.001)
+ (12, 3, 120, 15.0, 0.95, 0.01, 0.001)
+ (15, 3, 120, 15.0, 0.95, 0.01, 0.001)
+ (18, 3, 120, 15.0, 0.95, 0.01, 0.001)
+ (20, 3, 120, 15.0, 0.95, 0.01, 0.001)
+
+[:, :, 1, 1, 2, 1, 1] =
+ (10, 3, 120, 15.0, 0.98, 0.01, 0.001)
+ (12, 3, 120, 15.0, 0.98, 0.01, 0.001)
+ (15, 3, 120, 15.0, 0.98, 0.01, 0.001)
+ (18, 3, 120, 15.0, 0.98, 0.01, 0.001)
+ (20, 3, 120, 15.0, 0.98, 0.01, 0.001)
+
+[:, :, 1, 1, 3, 1, 1] =
+ (10, 3, 120, 15.0, 0.99, 0.01, 0.001)
+ (12, 3, 120, 15.0, 0.99, 0.01, 0.001)
+ (15, 3, 120, 15.0, 0.99, 0.01, 0.001)
+ (18, 3, 120, 15.0, 0.99, 0.01, 0.001)
+ (20, 3, 120, 15.0, 0.99, 0.01, 0.001)
+
+[:, :, 1, 1, 4, 1, 1] =
+ (10, 3, 120, 15.0, 1.0, 0.01, 0.001)
+ (12, 3, 120, 15.0, 1.0, 0.01, 0.001)
+ (15, 3, 120, 15.0, 1.0, 0.01, 0.001)
+ (18, 3, 120, 15.0, 1.0, 0.01, 0.001)
+ (20, 3, 120, 15.0, 1.0, 0.01, 0.001)
+
+[:, :, 1, 1, 1, 2, 1] =
+ (10, 3, 120, 15.0, 0.95, 0.001, 0.001)
+ (12, 3, 120, 15.0, 0.95, 0.001, 0.001)
+ (15, 3, 120, 15.0, 0.95, 0.001, 0.001)
+ (18, 3, 120, 15.0, 0.95, 0.001, 0.001)
+ (20, 3, 120, 15.0, 0.95, 0.001, 0.001)
+
+[:, :, 1, 1, 2, 2, 1] =
+ (10, 3, 120, 15.0, 0.98, 0.001, 0.001)
+ (12, 3, 120, 15.0, 0.98, 0.001, 0.001)
+ (15, 3, 120, 15.0, 0.98, 0.001, 0.001)
+ (18, 3, 120, 15.0, 0.98, 0.001, 0.001)
+ (20, 3, 120, 15.0, 0.98, 0.001, 0.001)
+
+[:, :, 1, 1, 3, 2, 1] =
+ (10, 3, 120, 15.0, 0.99, 0.001, 0.001)
+ (12, 3, 120, 15.0, 0.99, 0.001, 0.001)
+ (15, 3, 120, 15.0, 0.99, 0.001, 0.001)
+ (18, 3, 120, 15.0, 0.99, 0.001, 0.001)
+ (20, 3, 120, 15.0, 0.99, 0.001, 0.001)
+
+[:, :, 1, 1, 4, 2, 1] =
+ (10, 3, 120, 15.0, 1.0, 0.001, 0.001)
+ (12, 3, 120, 15.0, 1.0, 0.001, 0.001)
+ (15, 3, 120, 15.0, 1.0, 0.001, 0.001)
+ (18, 3, 120, 15.0, 1.0, 0.001, 0.001)
+ (20, 3, 120, 15.0, 1.0, 0.001, 0.001)
+
+[:, :, 1, 1, 1, 3, 1] =
+ (10, 3, 120, 15.0, 0.95, 0.0001, 0.001)
+ (12, 3, 120, 15.0, 0.95, 0.0001, 0.001)
+ (15, 3, 120, 15.0, 0.95, 0.0001, 0.001)
+ (18, 3, 120, 15.0, 0.95, 0.0001, 0.001)
+ (20, 3, 120, 15.0, 0.95, 0.0001, 0.001)
+
+[:, :, 1, 1, 2, 3, 1] =
+ (10, 3, 120, 15.0, 0.98, 0.0001, 0.001)
+ (12, 3, 120, 15.0, 0.98, 0.0001, 0.001)
+ (15, 3, 120, 15.0, 0.98, 0.0001, 0.001)
+ (18, 3, 120, 15.0, 0.98, 0.0001, 0.001)
+ (20, 3, 120, 15.0, 0.98, 0.0001, 0.001)
+
+[:, :, 1, 1, 3, 3, 1] =
+ (10, 3, 120, 15.0, 0.99, 0.0001, 0.001)
+ (12, 3, 120, 15.0, 0.99, 0.0001, 0.001)
+ (15, 3, 120, 15.0, 0.99, 0.0001, 0.001)
+ (18, 3, 120, 15.0, 0.99, 0.0001, 0.001)
+ (20, 3, 120, 15.0, 0.99, 0.0001, 0.001)
+
+[:, :, 1, 1, 4, 3, 1] =
+ (10, 3, 120, 15.0, 1.0, 0.0001, 0.001)
+ (12, 3, 120, 15.0, 1.0, 0.0001, 0.001)
+ (15, 3, 120, 15.0, 1.0, 0.0001, 0.001)
+ (18, 3, 120, 15.0, 1.0, 0.0001, 0.001)
+ (20, 3, 120, 15.0, 1.0, 0.0001, 0.001)</code></pre><p>For each hyperparameter configuration, the model was optimized and the resulting loss was recorded in an array <code>losses</code>. This, along with the optimized neural net parameters <code>p</code> for each hyperparameter configuration, was saved as a BSON file. After the grid search was completed, the optimal hyperparameter set was observed to be <code>N_weights = 15</code>, <code>N_hidden_layers = 3</code>, <code>β = 0.99</code>, <code>θ = 0.0001</code>. </p><h2 id="Amount-of-Data-Required"><a class="docs-heading-anchor" href="#Amount-of-Data-Required">Amount of Data Required</a><a id="Amount-of-Data-Required-1"></a><a class="docs-heading-anchor-permalink" href="#Amount-of-Data-Required" title="Permalink"></a></h2><p>We wish to observe the minimal amount of data required to obtain a satisfying approximation of the qualitative dynamics. For this, the same initial point <code>x0</code> was used with different integration lengths <code>tfin</code>. Ideally, a hyperparameter optimization would be performed for each of the datasets. Due to hardware and time constraints, the same optimal hyperparameters from the initial search were used for all datasets. </p><p>All trained models were evaluated on the same two trajectories starting at the initial points <span>$x_1 = ( -5, 1.2, -4 )^T$</span> and <span>$x_2 = ( -6, 1.2, -6 )^T$</span> converging to the double scroll attractor and outer periodic orbit, respectively. </p><p>Since the two trajectories lie in different scales, the trained models are evaluated using a relative squared error metric</p><p class="math-container">\[L_{rel} (\mathbf{x}, \mathbf{\hat{x}}; \mathbf{p}) = \frac{1}{\sigma^2 (\mathbf{x})} \sum_{i=1}^n \| \mathbf{x}(t_i) - \mathbf{\hat{x}}(t_i; \mathbf{p}) \| ^2\]</p><p>where <span>$\mathbf{m}(\mathbf{x})$</span> is the empirical mean of <span>$(\,\mathbf{x}(t_i)\,)_{i = 1,\ldots,n}$</span> and <span>$\sigma^2 (\mathbf{x})$</span> is the empirical variance</p><p class="math-container">\[\sigma^2 (x) = \sum_{i=1}^n \left\| \mathbf{x}(t_i) - \mathbf{m} (\mathbf{x}) \right\| ^2 .\]</p><p>The datasets generated by the following final times were tested in the script file <code>runscript2.jl</code>.</p><pre><code class="language-julia hljs">tfins = Float32[3, 5, 8, 10, 12, 15, 18, 20]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">8-element Vector{Float32}:
+  3.0
+  5.0
+  8.0
+ 10.0
+ 12.0
+ 15.0
+ 18.0
+ 20.0</code></pre><pre><code class="language-julia hljs">using CairoMakie
+using Random
+Random.seed!(1234)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">TaskLocalRNG()</code></pre><pre><code class="language-julia hljs"># for plotting phase portraits
+function chua_axis(; aspect=(1,1.2,1), azimuth=pi/10, kwargs...)
+    fig = Figure()
+    ax = Axis3(fig[1,1], aspect=aspect, azimuth=azimuth, kwargs...)
+    fig, ax
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">chua_axis (generic function with 1 method)</code></pre><pre><code class="language-julia hljs">using BSON
+losses = BSON.load( &quot;assets/params/losses_2023-04-02-06-43.bson&quot; )[:losses]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{Float32, Float32} with 8 entries:
+  5.0  =&gt; 0.520202
+  15.0 =&gt; 0.20821
+  20.0 =&gt; 0.149294
+  10.0 =&gt; 0.471012
+  18.0 =&gt; 0.147988
+  12.0 =&gt; 0.33676
+  8.0  =&gt; 0.470084
+  3.0  =&gt; 0.487478</code></pre><p>Due to hardware constraints, a more detailed search of final times was not possible. However, even with a small dataset it was still possible to notice a trend between dataset size and evaluated loss.</p><pre><code class="language-julia hljs">fig1 = Figure()
+ax1 = Axis(fig1[1,1], xlabel=&quot;tfin&quot;, ylabel=&quot;loss&quot;)
+ms1 = lines!(ax1, tfins, map(x-&gt;losses[x], tfins))</code></pre><p><img src="../tfinlosses.png" alt/></p><p>Curiously, it seems the models tranied on the most data became unstable. This can be seen when comparing longer trajectories which are in time closer to the scale of the largest Lyapunov exponent. </p><p>We first gather the trained parameters from each dataset. </p><pre><code class="language-julia hljs">params = Dict{Float32,Vector{Float32}}(
+    3  =&gt; BSON.load(&quot;assets/params/params_2023-04-02-07-05_loss_0.48747793.bson&quot;)[:p_trained],
+    5  =&gt; BSON.load(&quot;assets/params/params_2023-04-02-08-16_loss_0.520202.bson&quot;)[:p_trained],
+    8  =&gt; BSON.load(&quot;assets/params/params_2023-04-02-08-56_loss_0.47008443.bson&quot;)[:p_trained],
+    10 =&gt; BSON.load(&quot;assets/params/params_2023-04-02-09-20_loss_0.471012.bson&quot;)[:p_trained],
+    12 =&gt; BSON.load(&quot;assets/params/params_2023-04-02-09-36_loss_0.33675984.bson&quot;)[:p_trained],
+    15 =&gt; BSON.load(&quot;assets/params/params_2023-04-02-09-53_loss_0.20821033.bson&quot;)[:p_trained],
+    18 =&gt; BSON.load(&quot;assets/params/params_2023-04-02-10-09_loss_0.14798835.bson&quot;)[:p_trained],
+    20 =&gt; BSON.load(&quot;assets/params/params_2023-04-02-10-18_loss_0.1492943.bson&quot;)[:p_trained]
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{Float32, Vector{Float32}} with 8 entries:
+  5.0  =&gt; [0.607717, -0.38385, -0.363519, 0.486372, -0.0684945, 0.284115, 0.732…
+  15.0 =&gt; [-0.475963, 0.398366, -0.0163883, 0.0343725, -0.165915, 0.147566, -0.…
+  20.0 =&gt; [0.497705, -0.261413, -0.429641, -0.619645, -0.0461649, 0.890463, 0.6…
+  10.0 =&gt; [-0.39655, -0.200156, 0.11536, 0.195182, 0.104461, -0.295064, 0.15070…
+  18.0 =&gt; [-0.166653, -0.160973, 0.138394, -0.280427, -0.45777, -0.237651, 0.54…
+  12.0 =&gt; [-0.22705, 0.19442, 0.34643, -0.0482318, 0.735013, 0.565018, -0.03837…
+  8.0  =&gt; [0.131129, -0.0353615, 0.750711, -0.186892, -0.602767, -0.410698, 0.3…
+  3.0  =&gt; [-0.387957, -0.0164001, -0.280232, -0.615422, -0.271049, 0.0346531, -…</code></pre><p>We can recreate the models using these parameters, and compare the model trajectories to the true trajectory for an unseen initial condition. </p><pre><code class="language-julia hljs">using StaticArrays, DifferentialEquations
+using Flux, SciMLSensitivity
+using Statistics</code></pre><pre><code class="language-julia hljs"># Chua&#39;s circuit
+function v(u, p, t)
+    x, y, z = u
+    a, b, m0, m1 = p
+    SA{Float32}[ a*(y-m0*x-m1/3.0*x^3), x-y+z, -b*y ]
+end
+
+# parameters
+p_ode = SA{Float32}[ 18.0, 33.0, -0.2, 0.01 ]
+a, b, m0, m1 = p_ode
+
+v(u) = v(u, p_ode, 0f0)
+
+# equilibrium
+x₊ = SA{Float32}[ sqrt(-3*m0/m1), 0, -sqrt(-3*m0/m1) ]
+x₋ = -x₊
+
+x1 = SA{Float32}[-5, 1.2, -4]
+x2 = SA{Float32}[-6, 1.2, -6]
+
+# integration time
+t0, t1 = 0f0, 40f0
+tspan = (t0, t1)
+dt = 1f-2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.01f0</code></pre><pre><code class="language-julia hljs"># the model which was trained
+nn = Chain(
+    x -&gt; Float32.(x),
+    Dense(3 =&gt; 15, swish),
+    SkipConnection(Dense(15 =&gt; 15, swish), +),
+    SkipConnection(Dense(15 =&gt; 15, swish), +),
+    SkipConnection(Dense(15 =&gt; 15, swish), +),
+    Dense(15 =&gt; 3)
+)
+
+p, re_nn = Flux.destructure(nn)
+v_neural(u, p, t) = SVector{3,Float32}(re_nn(p)(u))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">v_neural (generic function with 1 method)</code></pre><p>For very long trajectories, all models will deviate from the true trajectory, due to the chaotic nature of the system. Interestingly however, the model trained until <code>tfin = 10</code> was successfully able to capture the pseudoperiodic nature of the attractor. </p><pre><code class="language-julia hljs">fig2 = Figure(resolution=(1200,600))
+
+ax21 = Axis3(fig2[1,1], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;True Trajectory&quot;)
+ax22 = Axis3(fig2[1,2], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;Trained up to tfin = 3&quot;)
+ax23 = Axis3(fig2[1,3], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;Trained up to tfin = 5&quot;)
+ax24 = Axis3(fig2[2,1], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;Trained up to tfin = 10&quot;)
+ax25 = Axis3(fig2[2,2], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;Trained up to tfin = 12&quot;)
+ax26 = Axis3(fig2[2,3], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;Trained up to tfin = 20&quot;)
+
+prob = ODEProblem(v, x1, (t0, t1), p_ode)
+sol = solve(prob, RK4(), saveat=dt)
+lines!(ax21, sol.u)
+
+prob = ODEProblem(v_neural, x1, (t0, t1), params[3])
+sol = solve(prob, RK4(), saveat=dt)
+lines!(ax22, sol.u)
+
+prob = ODEProblem(v_neural, x1, (t0, t1), params[5])
+sol = solve(prob, RK4(), saveat=dt)
+lines!(ax23, sol.u)
+
+prob = ODEProblem(v_neural, x1, (t0, t1), params[10])
+sol = solve(prob, RK4(), saveat=dt)
+lines!(ax24, sol.u)
+
+prob = ODEProblem(v_neural, x1, (t0, t1), params[12])
+sol = solve(prob, RK4(), saveat=dt)
+lines!(ax25, sol.u)
+
+prob = ODEProblem(v_neural, x1, (t0, t1), params[20])
+sol = solve(prob, RK4(), saveat=dt)
+lines!(ax26, sol.u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: dt(3.8146973e-6) &lt;= dtmin(3.8146973e-6) at t=19.734734. Aborting. There is either an error in your model specification or the true solution is unstable.
+└ @ SciMLBase ~/.julia/packages/SciMLBase/5yyka/src/integrator_interface.jl:589</code></pre><p><img src="../trajs.png" alt/></p><pre><code class="language-julia hljs">t2 = 3f0
+x3 = SA{Float32}[3, 1.1, 4]
+
+fig3 = Figure(resolution=(1200,600))
+
+ax31 = Axis(fig3[1,1], title=&quot;Trained up to tfin = 3&quot;)
+ax32 = Axis(fig3[1,2], title=&quot;Trained up to tfin = 8&quot;)
+ax33 = Axis(fig3[2,1], title=&quot;Trained up to tfin = 12&quot;)
+ax34 = Axis(fig3[2,2], title=&quot;Trained up to tfin = 15&quot;)
+
+prob = ODEProblem(v, x3, (t0, t2), p_ode)
+true_sol = reinterpret(reshape, Float32, solve(prob, RK4(), saveat=dt).u)
+
+for (ax, tfin) in zip([ax31, ax32, ax33, ax34], Float32[3, 8, 12, 15])
+    lines!(ax, t0:dt:t2, true_sol[1, :], color=:darkblue, linestyle=:dot, linewidth=2, label=&quot;True solution dim 1&quot;)
+    lines!(ax, t0:dt:t2, true_sol[2, :], color=:darkgreen, linestyle=:dot, linewidth=2, label=&quot;True solution dim 2&quot;)
+    lines!(ax, t0:dt:t2, true_sol[3, :], color=:darkred, linestyle=:dot, linewidth=2, label=&quot;True solution dim 3&quot;)
+
+    prob = ODEProblem(v_neural, x3, (t0, t2), params[tfin])
+    sol = reinterpret(reshape, Float32, solve(prob, RK4(), saveat=dt).u)
+
+    lines!(ax, t0:dt:t2, sol[1, :], color=:blue, linewidth=2, label=&quot;trained model dim 1&quot;)
+    lines!(ax, t0:dt:t2, sol[2, :], color=:green, linewidth=2, label=&quot;trained model dim 2&quot;)
+    lines!(ax, t0:dt:t2, sol[3, :], color=:red, linewidth=2, label=&quot;trained model dim 3&quot;)
+end
+
+xlims = (t0, t2)
+ylims = 1.2 .* extrema(true_sol)
+limits!(ax31, xlims, ylims)
+limits!(ax32, xlims, ylims)
+limits!(ax33, xlims, ylims)
+limits!(ax34, xlims, ylims)
+
+axislegend(ax34, position=:rb)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `prob` in soft scope is ambiguous because a global variable by the same name exists: `prob` will be treated as a new local. Disambiguate by using `local prob` to suppress this warning or `global prob` to assign to the existing global variable.
+└ @ discussion.md:224
+┌ Warning: Assignment to `sol` in soft scope is ambiguous because a global variable by the same name exists: `sol` will be treated as a new local. Disambiguate by using `local sol` to suppress this warning or `global sol` to assign to the existing global variable.
+└ @ discussion.md:225</code></pre><p><img src="../comps1.png" alt/></p><p>It is clear that some models quickly diverge, despite having more data. There are two main reasons for this issue:</p><ul><li>After ca. 90 epochs, all models began &quot;jumping&quot; from the optimal objective value. This problem is caused largely by the optimization algorithm itself. A learning rate which is too large can cause the optimizer to act chaotically, so a more aggressive reduction in learning rate would be beneficial. Furthermore, switching to a local optimizer (e.g. the LBFGS quasi-Newton method) can additionally be used once a global optimizer has reached an approximate solution. Such local optimizers are built in to the <code>Optimization.jl</code> ecosystem. An even simpler improvement would be to store the &quot;best so far&quot; parameters and update them at each iteration step. This could be added in the training loop as follows: </li></ul><pre><code class="language-julia hljs">if false # do not actually, run, just a demo implementation
+
+N_epochs = 180
+l_best = Inf32
+best_params = model.p
+
+for i_e = 1:N_epochs
+
+    Flux.train!(model, train, opt_state) do m, t, x
+        result = m((t,x))
+        loss(result, x)
+    end
+
+    l_best = min(l_best, l)
+    global l = mean(valid) do v
+        loss( model(v), v[2], β )
+    end
+
+    if l &lt;= l_best
+        global best_params .= model.p
+    end
+
+    if i_e % 30 == 0
+        η /= 2
+        Flux.adjust!(opt_state, η)
+    end
+
+end
+
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `l_best` in soft scope is ambiguous because a global variable by the same name exists: `l_best` will be treated as a new local. Disambiguate by using `local l_best` to suppress this warning or `global l_best` to assign to the existing global variable.
+└ @ discussion.md:264</code></pre><ul><li>The model was trained on very short time intervals to avoid divergence early in training. This was necessary since the initial models can be very expansive / unstable in certain directions. As training evolves, however, the intervals no longer need to be quite as small. A simple imperovement to the trainnig process is therefore to run a second training loop (potentially with less epochs) on larger time slices. Note that this requires more training time, which due to hardware constraints was not possible. This can also be implemented quite easily:</li></ul><pre><code class="language-julia hljs">if false # do not actually, run, just a demo implementation
+
+N_epochs = 128
+data_length = 8
+max_length = 64
+
+while data_length &lt;= max_length
+
+    train, valid = NODEDataloader(sol, data_length; dt=dt, valid_set=0.2, GPU=false#=true=#)
+
+    for i_e in 1:N_epochs
+        # run training loop as above
+    end
+
+    data_length *= 2
+    N_epochs /= 2
+
+end
+
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `data_length` in soft scope is ambiguous because a global variable by the same name exists: `data_length` will be treated as a new local. Disambiguate by using `local data_length` to suppress this warning or `global data_length` to assign to the existing global variable.
+└ @ discussion.md:301
+┌ Warning: Assignment to `N_epochs` in soft scope is ambiguous because a global variable by the same name exists: `N_epochs` will be treated as a new local. Disambiguate by using `local N_epochs` to suppress this warning or `global N_epochs` to assign to the existing global variable.
+└ @ discussion.md:302</code></pre><p>It should be noted that even the more &quot;well baheved&quot; models still exhibit very large expansion rates, as an analysis of the Lyapounov exponents shows. </p><pre><code class="language-julia hljs">using GAIO</code></pre><pre><code class="language-julia hljs">c, r = (0,0,0), (20,20,120)
+Q = GAIO.Box(c, r)
+
+P = BoxPartition(Q)
+S = cover(P, :)
+
+nn_10 = re_nn(params[10])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Chain(
+  Main.var&quot;#6#7&quot;(),
+  Dense(3 =&gt; 15, swish),                # 60 parameters
+  SkipConnection(
+    Dense(15 =&gt; 15, swish),             # 240 parameters
+    +,
+  ),
+  SkipConnection(
+    Dense(15 =&gt; 15, swish),             # 240 parameters
+    +,
+  ),
+  SkipConnection(
+    Dense(15 =&gt; 15, swish),             # 240 parameters
+    +,
+  ),
+  Dense(15 =&gt; 3),                       # 48 parameters
+)                   # Total: 10 arrays, 828 parameters, 3.906 KiB.</code></pre><pre><code class="language-julia hljs">f(x) = rk4_flow_map(v, x, dt, 100)
+F = BoxMap(:grid, f, Q)
+
+# 30 subdivision steps to cover the chain recurrent set
+C = chain_recurrent_set(F, S, steps=24)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">21984 - element BoxSet in 256 x 256 x 256 - element BoxPartition</code></pre><pre><code class="language-julia hljs">f(x) = rk4_flow_map(v, x, dt, 20)
+F = BoxMap(:grid, f, Q)
+σ = finite_time_lyapunov_exponents(F, C, T=20*dt)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">BoxFun in 256 x 256 x 256 - element BoxPartition with 21984 stored weights</code></pre><pre><code class="language-julia hljs">f_neural(x) = rk4_flow_map(SVector{3,Float32} ∘ nn_10, x, dt, 20)
+F_neural = BoxMap(:grid, f_neural, Q)
+σ_neural = finite_time_lyapunov_exponents(F_neural, C, T=20*dt)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">BoxFun in 256 x 256 x 256 - element BoxPartition with 21984 stored weights</code></pre><pre><code class="language-julia hljs">fig4 = Figure(resolution=(1200,600))
+g1 = fig4[1,1] = GridLayout()
+g2 = fig4[1,2] = GridLayout()
+
+ax1 = Axis3(g1[1,1], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;True FTLE Field&quot;)
+ms1 = plot!(ax1, σ, colormap=(:jet, 0.6))
+Colorbar(g1[1,2], ms1)
+
+ax2 = Axis3(g2[1,1], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;Predicted FTLE Field&quot;)
+ms2 = plot!(ax2, σ_neural, colormap=(:jet, 0.6))
+Colorbar(g2[1,2], ms2)</code></pre><p><img src="../ftles.png" alt/></p><pre><code class="language-julia hljs">σ_diff = σ_neural - σ</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">BoxFun in 256 x 256 x 256 - element BoxPartition with 21984 stored weights</code></pre><pre><code class="language-julia hljs">fig5 = Figure()
+ax = Axis3(fig5[1,1], aspect=(1,1.2,1), azimuth=pi/10, title=&quot;Difference in FTLE Fields&quot;)
+ms = plot!(ax, σ_diff, colormap=(:jet, 0.6))
+Colorbar(fig5[1,2], ms)</code></pre><p><img src="../ftlecomp.png" alt/></p><h3 id="Training-on-the-outer-Attractor"><a class="docs-heading-anchor" href="#Training-on-the-outer-Attractor">Training on the outer Attractor</a><a id="Training-on-the-outer-Attractor-1"></a><a class="docs-heading-anchor-permalink" href="#Training-on-the-outer-Attractor" title="Permalink"></a></h3><p>An interesting - though not entirely unexpected - result of training the model on the outer periodic orbit was that the model was unable to capture the qualitative aspects of the inner attractor. In fact, in many cases the model sharply diverged when approaching the origin. In some sense this is a curious result, since the symmetry of the outer attractor might &quot;suggest&quot; that there is a fixed point near the origin. Knowledge of this fixed point could potentially be encoded via the method of &quot;explicit linearity&quot; mentioned in the model section. However, again due to hardware constraints, this hypothesis could not rigorously tested within an appropriate time frame. Nonetheless, the &quot;failure&quot; of the model when trained on the outer attractor leads to an array of interesting questions on how to learn &quot;hidden&quot; dynamics by choosing an appropriate neural network model based on prior knowledge. </p><h2 id="Perturbed-Data"><a class="docs-heading-anchor" href="#Perturbed-Data">Perturbed Data</a><a id="Perturbed-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Perturbed-Data" title="Permalink"></a></h2><p>In the final test, the data was perturbed by adding white noise to the true differential equation. There are two &quot;natural&quot; methods in which this might be done:</p><ul><li>Integrate the true differential equation to obtain training data, then add white noise to the result. In a natural science setting, this can model using an inexact measurement device on a &quot;macroscopic&quot; system. In other words, the system can be measured (though only inaccurately) without disturbing the system state itself. An example of this type of system would be an energy balance model for large atmospheric systems. This can be implemented using DifferentialEquations.jl as follows:</li></ul><pre><code class="language-julia hljs">prob = ODEProblem(v, x3, (t0, t1), p_ode)
+sol = solve(prob, RK4(), saveat=dt)
+
+δ = 0.5
+sol_arr = reinterpret(reshape, Float32, sol.u)
+sol_arr .+= δ/4 * rand(Float32, size(sol_arr)) .- δ/8</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3×4001 reinterpret(reshape, Float32, ::Vector{SVector{3, Float32}}) with eltype Float32:
+ 2.9562   3.23769  3.55967  3.95621  …   8.77365    8.86536    8.80165
+ 1.05274  1.10085  1.2074   1.30683      0.685348   0.656657   0.714721
+ 3.9474   3.57651  3.22271  2.83889     -8.00964   -8.14084   -8.48156</code></pre><pre><code class="language-julia hljs">fig6, ax = chua_axis()
+scatter!(ax, [x₊, SA[0f0,0f0,0f0], x₋], color=:red)
+lines!(ax, sol.u)</code></pre><p><img src="../naive.png" alt/></p><ul><li>Add a diffusion term to the differential equation itself. This way, the gathered data is a realization of a stochastic process and may not immediately capture the true nature of the system. Again in a natural science setting, this can model using a measurement device on a &quot;microscopic&quot; system. That is, the system state cannot be measured without itself being perturbed. An example of this type of system would be subatomic model of a chemical reaction. This can also be done easily using DifferentialEquations.jl</li></ul><pre><code class="language-julia hljs">_noise = SA{Float32}[δ, δ, δ]
+noise(u, p, t) = _noise
+
+prob = SDEProblem(v, noise, x₊, (t0, t1), p_ode)
+sol = solve(prob, saveat=dt)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: 1st order linear
+t: 4001-element Vector{Float32}:
+  0.0
+  0.01
+  0.02
+  0.03
+  0.04
+  0.05
+  0.06
+  0.07
+  0.08
+  0.09
+  ⋮
+ 39.92
+ 39.93
+ 39.94
+ 39.95
+ 39.96
+ 39.97
+ 39.98
+ 39.99
+ 40.0
+u: 4001-element Vector{SVector{3, Float32}}:
+ [7.745967, 0.0, -7.745967]
+ [7.8592963, 0.009285571, -7.77814]
+ [7.8969603, 0.0719294, -7.787726]
+ [7.9419894, -0.02532945, -7.8880196]
+ [7.927784, -0.08205428, -7.8671904]
+ [7.8101835, -0.11860375, -7.8128686]
+ [7.770132, -0.17388394, -7.8035054]
+ [7.769382, -0.19486469, -7.7863364]
+ [7.6619587, -0.13511784, -7.7897344]
+ [7.6486635, -0.118525915, -7.7839594]
+ ⋮
+ [-5.988697, -0.3688464, 1.6565824]
+ [-6.0473404, -0.37871787, 1.8192406]
+ [-6.1729956, -0.415064, 1.9362547]
+ [-6.3807034, -0.45462388, 2.053587]
+ [-6.502673, -0.37900552, 2.1422272]
+ [-6.5636473, -0.39323455, 2.2710087]
+ [-6.7165537, -0.42879677, 2.533097]
+ [-6.8867397, -0.46379882, 2.6802638]
+ [-7.1001916, -0.4278846, 2.8488505]</code></pre><pre><code class="language-julia hljs">fig7, ax = chua_axis()
+scatter!(ax, [x₊, SA[0f0,0f0,0f0], x₋], color=:red)
+lines!(ax, sol.u)</code></pre><p><img src="../stoch.png" alt/></p><p>Since the Chua circuit is so heavily motivated from real life considerations, the method for adding noise ought to reflect the real life as well. The addition of an oscilloscope for measuring current in a circuit does perturb the system slightly, though this change is so small that it is negligible to the cicuit&#39;s dynamics. Hence it seems reasonable to use the first approach. However, using a stochastic differential equation may be a natural extension to the project. </p><p>The model was trained as before with identical hyperparameters for the following magnitudes of the perturbation <code>δ</code>. </p><pre><code class="language-julia hljs">δs = Float32[0.2, 0.3, 0.5, 0.8, 1.]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5-element Vector{Float32}:
+ 0.2
+ 0.3
+ 0.5
+ 0.8
+ 1.0</code></pre><p>The resulting losses were recorded. Expectedly, the loss shows a positive correlation with the magnitude of the perturbation. </p><pre><code class="language-julia hljs">losses = BSON.load( &quot;assets/params/losses_2023-04-03-14-12.bson&quot; )[:losses]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{Float32, Float32} with 5 entries:
+  0.8 =&gt; 2.73056
+  0.5 =&gt; 2.46959
+  0.2 =&gt; 1.50256
+  1.0 =&gt; 3.52155
+  0.3 =&gt; 1.82891</code></pre><pre><code class="language-julia hljs">fig8 = Figure()
+ax1 = Axis(fig8[1,1], xlabel=&quot;δ&quot;, ylabel=&quot;loss&quot;)
+ms1 = lines!(ax1, δs, map(x-&gt;losses[x], δs))</code></pre><p><img src="../deltalosses.png" alt/></p><pre><code class="language-julia hljs">params = Dict{Float32,Vector{Float32}}(
+    0.2f0  =&gt; BSON.load(&quot;assets/params/params_2023-04-03-17-02_loss_1.5025642.bson&quot;)[:p_trained],
+    0.3f0  =&gt; BSON.load(&quot;assets/params/params_2023-04-03-17-02_loss_1.8289114.bson&quot;)[:p_trained],
+    0.5f0  =&gt; BSON.load(&quot;assets/params/params_2023-04-03-16-57_loss_2.4695873.bson&quot;)[:p_trained],
+    0.8f0  =&gt; BSON.load(&quot;assets/params/params_2023-04-03-16-52_loss_2.7305609.bson&quot;)[:p_trained],
+    1.0f0  =&gt; BSON.load(&quot;assets/params/params_2023-04-03-15-46_loss_3.521549.bson&quot;)[:p_trained],
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{Float32, Vector{Float32}} with 5 entries:
+  1.0 =&gt; [0.210163, 0.0364637, 0.0641928, -0.360489, 0.597534, -0.359996, 0.149…
+  0.5 =&gt; [0.0206331, 0.203733, 0.167374, 0.0369328, -0.283627, 0.652654, 0.2207…
+  0.2 =&gt; [-0.259808, 0.151862, 0.230064, 0.0496329, -0.0888778, -0.232204, 0.32…
+  0.3 =&gt; [0.935949, 0.116808, -0.609739, 0.352416, -0.0419755, 0.109818, -0.166…
+  0.8 =&gt; [-0.299926, -0.23733, 0.100189, 0.2291, 0.347307, 0.34684, 0.0152306, …</code></pre><pre><code class="language-julia hljs">fig9 = Figure(resolution=(1200,600))
+
+ax31 = Axis(fig9[1,1], title=&quot;Trained with δ = 0.2&quot;)
+ax32 = Axis(fig9[1,2], title=&quot;Trained with δ = 0.5&quot;)
+ax33 = Axis(fig9[1,3], title=&quot;Trained with δ = 1.0&quot;)
+
+prob = ODEProblem(v, x3, (t0, t2), p_ode)
+true_sol = reinterpret(reshape, Float32, solve(prob, RK4(), saveat=dt).u)
+
+for (ax, tfin) in zip([ax31, ax32, ax33], Float32[0.2, 0.5, 1.0])
+    lines!(ax, t0:dt:t2, true_sol[1, :], color=:darkblue, linestyle=:dot, linewidth=2, label=&quot;True solution dim 1&quot;)
+    lines!(ax, t0:dt:t2, true_sol[2, :], color=:darkgreen, linestyle=:dot, linewidth=2, label=&quot;True solution dim 2&quot;)
+    lines!(ax, t0:dt:t2, true_sol[3, :], color=:darkred, linestyle=:dot, linewidth=2, label=&quot;True solution dim 3&quot;)
+
+    prob = ODEProblem(v_neural, x3, (t0, t2), params[tfin])
+    sol = reinterpret(reshape, Float32, solve(prob, RK4(), saveat=dt).u)
+
+    lines!(ax, t0:dt:t2, sol[1, :], color=:blue, linewidth=2, label=&quot;trained model dim 1&quot;)
+    lines!(ax, t0:dt:t2, sol[2, :], color=:green, linewidth=2, label=&quot;trained model dim 2&quot;)
+    lines!(ax, t0:dt:t2, sol[3, :], color=:red, linewidth=2, label=&quot;trained model dim 3&quot;)
+end
+
+xlims = (t0, t2)
+ylims = 1.3 .* extrema(true_sol)
+limits!(ax31, xlims, ylims)
+limits!(ax32, xlims, ylims)
+limits!(ax33, xlims, ylims)
+
+axislegend(ax33, position=:rb)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `prob` in soft scope is ambiguous because a global variable by the same name exists: `prob` will be treated as a new local. Disambiguate by using `local prob` to suppress this warning or `global prob` to assign to the existing global variable.
+└ @ discussion.md:480
+┌ Warning: Assignment to `sol` in soft scope is ambiguous because a global variable by the same name exists: `sol` will be treated as a new local. Disambiguate by using `local sol` to suppress this warning or `global sol` to assign to the existing global variable.
+└ @ discussion.md:481</code></pre><p><img src="../comps2.png" alt/></p><p>We see that increasing the magnitude of the perturbation causes the model to become more unstable. All models were able to roughly capture the period of the periodic behavior, however higher values of <code>δ</code> quickly diverge after just one hlalf period. Observing the lowest value of <code>δ</code> we see that the model is able to capture the trend but is &quot;conservative&quot; with the amplitude of the oscillations. An interesting connection to the original model is that this phenomenon was also observed when using the standard mean square error loss function in training. This might suggest that decreasing the value of the exponential weight factor <code>\beta</code> may be enough to force the model into larger amplitudes. </p><p>There are multiple ways in which one could improve this model:</p><ul><li>Train on multiple perturbed trajectories. Ideally, the trajectories are very similar such that having multiple perturbations can potentially &quot;cancel&quot; each other out. This method may be difficult since the chaotic nature of the system means that it has sensitive dependence on initial conditions. Even very similar initial conditions will eventually diverge. Nonetheless simply using multiple trajectories without worrying about their &quot;similarity&quot; can already massively improve the model. </li><li>Add perturbations to the model itself. This could be done by adding white noise to the model integrator, i.e. construct a stochastic differential equation. Then, define the output of the model as the average over multiple realizations. This way, the magnitude of the perturbation within the model can also be trained. This may also help address the issue mentioned above, and increase the amplitude of oscillations. </li></ul><h2 id="Conclusion"><a class="docs-heading-anchor" href="#Conclusion">Conclusion</a><a id="Conclusion-1"></a><a class="docs-heading-anchor-permalink" href="#Conclusion" title="Permalink"></a></h2><p>The complex dynamics of the Chua circuit have been widely studied since its invention. Despite its chaotic nature, a single trajectory around its &quot;double scroll&quot; attractor was enough to accurately predict the system&#39;s dynamics up to the time scale of the Lyapunov exponents. Trajectories for training were chosen along the attractor, as well as approaching an attracting periodic orbit. A neural ordinary differential equation was used to approximate the dyanmics. Multiple structures for the neural ODE were tested during development, and a residual network was deemed to be more accurate. Models were quickly able to discover the trend for trajectories, but the amplitude of oscillations were too small. To resolve this issue, a new loss function was defined, using the exponential weight factor <code>\beta</code>. This significantly improved the accuracy of the model. A hyperparameter search was conducted and the optimal hyperparameters were used to analyze the amount of data required to obtain a satisfying approximation of the dynamics. The author concludes that training up to <code>tfin = 10</code> - equivalently using 1000 datapoints separated by <code>dt=0.02</code> - was enough to obtain such a satisfying result. Using perturbed data caused the model to perform less accuratley, though only in the sense that the model was too conservative. This is commonly a sign of underfitting. Hence, improvements to the model were suggested, and are summarized here:</p><ul><li>Reduce the learning rate adaptively and store a running best parameter set,</li><li>train the model using a performant local optimizer such as LBFGS once an approximation of the optimal parameter set is found,</li><li>slowly increase the time intervals used in training after many training iterations,</li><li>use multiple similar trajectories instead of only one trajectory,</li><li>add perturbation to the model directly if it is known that the dataset is perturbed.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../model/">« Model</a><a class="docs-footer-nextpage" href="../refs/">References »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 4 April 2023 20:34">Tuesday 4 April 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
