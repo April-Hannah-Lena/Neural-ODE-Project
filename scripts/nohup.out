@@ -1,0 +1,3 @@
+ERROR: LoadError: UndefVarError: BSON not defined
+in expression starting at /u/halle/herwiga/home_at/Neural-ODE-Project/scripts/runscript.jl:61
+in expression starting at /u/halle/herwiga/home_at/Neural-ODE-Project/scripts/runscript.jl:3

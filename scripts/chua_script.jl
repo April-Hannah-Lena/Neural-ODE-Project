@@ -1,16 +1,17 @@
 function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAIN, PLOT)
 
     prob = ODEProblem(v, x0, (t0, tfin), p_ode)
-    true_sol = solve(prob, Tsit5(), saveat=dt, sensealg=InterpolatingAdjoint())
+    true_sol = solve(prob, RK4(), saveat=dt, sensealg=InterpolatingAdjoint())
 
-    PLOT && plot_trajectory(true_sol)
+    PLOT && display(plot_trajectory(true_sol))
 
-    train, valid = NODEDataloader(true_sol, 8; dt=dt, valid_set=0.8, GPU=false#=true=#)
+    train, valid = NODEDataloader(true_sol, 8; dt=dt, valid_set=0.05, GPU=false#=true=#)
 
     neural_net = Chain(
         #BatchNorm(1),
         #u -> 2*u,
         #u -> [u; u.^3],
+        x -> Float32.(x),
         Dense(3 => N_weights, swish),
         ntuple(
             _ -> SkipConnection(Dense(N_weights => N_weights, swish), +), 
@@ -23,11 +24,12 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
     #p = p
     neural_ode(u, p, t) = re_nn(p)(u)
     neural_ode_prob = ODEProblem(neural_ode, #=CuArray(x0)=#x0, tspan, p)
-    model = ChaoticNDE(neural_ode_prob, alg=Tsit5(), gpu=false#=true=#, sensealg=InterpolatingAdjoint())
+    model = ChaoticNDE(neural_ode_prob, alg=RK4(), gpu=false#=true=#, sensealg=InterpolatingAdjoint())
 
-    loss(x, y, β=β) = sum(enumerate(zip(x, y))) do z
-        (i, (xi, yi)) = z
-        abs2(xi - yi) * β^i     # give closer times higher weight
+    function loss(x, y, β)
+        n = size(x, 2)
+        βs = β .^ (1:n)
+        sum( abs2, (x - y) .* βs' )
     end
 
     opt = Flux.OptimiserChain(Flux.WeightDecay(θ), Flux.RMSProp(η))
@@ -40,38 +42,44 @@ function train_node(N_weights, N_hidden_layers, N_epochs, tfin, β, θ, η, TRAI
     model(train[1])
     grad = Flux.gradient(model) do m
         result = m(train[1])
-        loss(result, train[1][2])
+        loss(result, train[1][2], β)
     end   
 
-    l = loss( model(train[1]), train[1][2] )
+    l = mean(valid) do v
+        loss( model(v), v[2], 1f0 )
+    end
 
-    tid = Threads.threadid()
-    prog = Progress(N_epochs, desc="Task $tid", offset=2*tid)
+    #prog = Progress(N_epochs)
     if TRAIN
         for i_e = 1:N_epochs
 
             Flux.train!(model, train, opt_state) do m, t, x
                 result = m((t,x))
-                loss(result, x)
+                loss(result, x, β)
             end 
 
-            global l = loss( model(train[1]), train[1][2], 1f0 )
-            PLOT && display(plot_nde(true_sol, model, train, ndata=450))
-
+            #global l = mean(valid) do v
+            #    loss( model(v), v[2], 1f0 )
+            #end
+            
             if i_e % 30 == 0
+                PLOT && display(plot_nde(true_sol, model, train, ndata=450))
                 η /= 2
                 Flux.adjust!(opt_state, η)
             end
 
-            ProgressMeter.next!(prog, showvalues=[(:loss, l)])
+            #ProgressMeter.next!(prog, showvalues=[(:loss, l)])
 
         end
     end
 
-    l = loss( model(train[1]), train[1][2], 1f0 )
+    l = mean(valid) do v
+        loss( model(v), v[2], 1f0 )
+    end
+
     p_trained = Array(model.p)
     time = format(now(), "yyyy-mm-dd-HH-MM")
     BSON.@save "./params/params_$(time)_loss_$(l).bson" p_trained
 
-    return l
+    return l, p_trained, re_nn
 end
