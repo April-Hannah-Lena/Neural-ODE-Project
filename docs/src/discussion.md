@@ -61,7 +61,7 @@ tfins = Float32[3, 5, 8, 10, 12, 15, 18, 20]
 ```
 
 ```@example 1
-using GLMakie
+using CairoMakie
 using Random
 Random.seed!(1234)
 ```
